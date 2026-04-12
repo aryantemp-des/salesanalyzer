@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secondary Admin - Website Prediction</title>
+    <style>
+        :root {
+            --bg-dark: #090e17;
+            --bg-card: #111827;
+            --border: #1e293b;
+            --recovery: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-dark); color: var(--text-main);
+            font-family: 'Inter', system-ui, sans-serif; padding: 2rem; margin: 0;
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .container {
+            width: 100%; max-width: 600px; background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(10px);
+            border: 1px solid var(--border); border-radius: 20px; padding: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+        h1 { text-align: center; margin-top: 0; font-size: 2.2rem; background: linear-gradient(to right, #34d399, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { text-align:center; color: var(--text-muted); margin-bottom:3rem; font-size: 1rem;}
+        
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;}
+        
+        label { font-size: 0.9rem; color: var(--text-muted); font-weight: 500;}
+        input {
+            padding: 1rem 1.2rem; border-radius: 10px; border: 1px solid var(--border);
+            background: #0f1523; color: white; outline: none; font-family: inherit; font-size: 1rem;
+            transition: all 0.3s;
+        }
+        input:focus { border-color: var(--recovery); box-shadow: 0 0 0 2px rgba(16,185,129,0.2); }
+        
+        button {
+            width: 100%; padding: 1.2rem; background: var(--recovery); color: white;
+            border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 700;
+            margin-top: 2rem; cursor: pointer; transition: 0.3s; box-shadow: 0 10px 20px rgba(16,185,129,0.2);
+        }
+        button:hover { background: #059669; transform: translateY(-2px); box-shadow: 0 12px 25px rgba(16,185,129,0.4);}
+        
+        .req { color: #f43f5e; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Secondary Admin Panel</h1>
+        <div class="subtitle">Setup Recovery & Prediction Engine.</div>
+        
+        <form id="admin2Form" onsubmit="saveData(event)">
+            
+            <div class="form-group">
+                <label>Website URL (KEY) <span class="req">*</span></label>
+                <input id="websiteUrl" placeholder="https://example.com" required>
+            </div>
+            <div class="form-group">
+                <label>Target Conversion Rate (%)</label>
+                <input id="targetConvRate" type="number" step="0.1" placeholder="15.5" required>
+            </div>
+
+            <button type="submit">Save Prediction Data</button>
+        </form>
+    </div>
+
+    <script>
+        function saveData(e) {
+            e.preventDefault();
+            const webKey = document.getElementById("websiteUrl").value.trim();
+            if(!webKey) return alert("Website URL is required as a key.");
+            
+            const storageKey = "admin2_" + webKey;
+            
+            const data = {
+                website: webKey,
+                targetConvRate: document.getElementById("targetConvRate").value,
+                timestamp: Date.now()
+            };
+            
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(data));
+                showAlert("Simulation Data stored cleanly for Vercel / GitHub deployment!");
+            } catch (err) {
+                console.error("Storage Error:", err);
+                alert("Data storage failed! Ensure you are not in strict incognito when deploying to static Github/Vercel hosts.");
+            }
+        }
+
+        function showAlert(msg) {
+            const div = document.createElement('div');
+            div.textContent = msg;
+            div.style.position = 'fixed';
+            div.style.top = '20px';
+            div.style.right = '20px';
+            div.style.background = '#10b981';
+            div.style.color = '#fff';
+            div.style.padding = '1rem 2rem';
+            div.style.borderRadius = '8px';
+            div.style.boxShadow = '0 10px 30px rgba(16,185,129,0.3)';
+            div.style.fontWeight = '600';
+            div.style.zIndex = '9999';
+            div.style.opacity = '0';
+            div.style.transform = 'translateY(-20px)';
+            div.style.transition = 'all 0.3s';
+            document.body.appendChild(div);
+
+            setTimeout(() => { div.style.opacity = '1'; div.style.transform = 'translateY(0)'; }, 10);
+            setTimeout(() => {
+                div.style.opacity = '0'; div.style.transform = 'translateY(-20px)';
+                setTimeout(() => div.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
