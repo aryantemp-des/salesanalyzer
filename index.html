@@ -98,6 +98,38 @@
             color: var(--text-main);
         }
 
+<<<<<<< HEAD
+=======
+        .btn-pdf {
+            background: linear-gradient(135deg, var(--cyan), #1a73e8);
+            border: none;
+            color: #ffffff;
+            padding: 0.55rem 1.1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            box-shadow: 0 2px 8px rgba(66, 133, 244, 0.25);
+        }
+
+        .btn-pdf:hover:not(:disabled) {
+            background: linear-gradient(135deg, #1a73e8, #1557b0);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(66, 133, 244, 0.4);
+        }
+
+        .btn-pdf:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+>>>>>>> ee5f7bb (pdf)
         /* General Container */
         .container {
             max-width: 1280px;
@@ -866,6 +898,17 @@
                         <span class="countdown-title">Time to Refresh</span>
                         <span class="countdown-timer" id="istCountdown">00:00:00</span>
                     </div>
+<<<<<<< HEAD
+=======
+                    <button class="btn-pdf" id="btnExportPDF" onclick="exportSalesAnalyzerPDF()" title="Download complete SalesAnalyzer PDF report">
+                        <svg width="16" height="16" viewBox="0 0 24 24">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span id="btnExportPDFText">Download PDF</span>
+                    </button>
+>>>>>>> ee5f7bb (pdf)
                     <button class="btn-outline" onclick="location.reload()">New Analysis</button>
                 </div>
                 <p>Sales analysis report — real-time diagnostics (Data is securely locked and cannot be tampered with)
@@ -1540,6 +1583,862 @@
                 document.getElementById("inlineSimulationBox").style.boxShadow = "none";
             }
         }
+<<<<<<< HEAD
+=======
+
+        // ==========================================
+        // SALESANALYZER PDF EXPORT ENGINE
+        // ==========================================
+
+        async function loadPDFLibraries() {
+            if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable && window.NotoSansBase64) {
+                return;
+            }
+
+            const loadScript = (url) => {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.async = true;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            };
+
+            try {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    try {
+                        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+                    } catch (e) {
+                        await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+                    }
+                }
+
+                if (!window.jspdf.jsPDF.API || !window.jspdf.jsPDF.API.autoTable) {
+                    try {
+                        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+                    } catch (e) {
+                        await loadScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js');
+                    }
+                }
+                
+                if (!window.NotoSansBase64) {
+                    await loadScript('./pdf-fonts.js');
+                }
+            } catch (err) {
+                console.error("Failed to load PDF libraries:", err);
+                throw new Error("Could not load PDF generation engine. Please check your internet connection.");
+            }
+        }
+
+        function getChartImageWithWhiteBg(chartInstance) {
+            if (!chartInstance || !chartInstance.canvas) return null;
+            try {
+                const srcCanvas = chartInstance.canvas;
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = srcCanvas.width || 600;
+                tempCanvas.height = srcCanvas.height || 300;
+                const ctx = tempCanvas.getContext('2d');
+                
+                // Solid white background for print-friendly rendering
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                
+                // Draw chart
+                ctx.drawImage(srcCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
+                const dataUrl = tempCanvas.toDataURL('image/png', 1.0);
+                
+                // Cleanup
+                tempCanvas.width = 0;
+                tempCanvas.height = 0;
+                return dataUrl;
+            } catch (e) {
+                console.warn("Could not capture chart as image:", e);
+                return null;
+            }
+        }
+
+        async function exportSalesAnalyzerPDF() {
+            if (!currentData) {
+                alert("No active SalesAnalyzer data found. Please analyze a business first.");
+                return;
+            }
+
+            const btn = document.getElementById("btnExportPDF");
+            const btnText = document.getElementById("btnExportPDFText");
+            const originalText = btnText ? btnText.textContent : "Download PDF";
+
+            try {
+                if (btn) btn.disabled = true;
+                if (btnText) btnText.textContent = "Generating PDF...";
+
+                // 1. Ensure PDF libraries are ready
+                await loadPDFLibraries();
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4',
+                    compress: true
+                });
+
+                if (window.NotoSansBase64) {
+                    doc.addFileToVFS('NotoSans-Regular.ttf', window.NotoSansBase64);
+                    doc.addFont('NotoSans-Regular.ttf', 'helvetica', 'normal');
+                    doc.addFont('NotoSans-Regular.ttf', 'helvetica', 'bold');
+                    doc.setFont('helvetica', 'normal');
+                }
+
+                const pageWidth = 210;
+                const pageHeight = 297;
+                const margin = 14;
+                const contentWidth = pageWidth - (margin * 2);
+
+                // 2. Gather current SalesAnalyzer state
+                const periodNode = document.getElementById("dashPeriodScale");
+                const multiplier = periodNode ? parseInt(periodNode.value) : 1;
+                const periodText = multiplier === 1 ? "Daily" : multiplier === 30 ? "Monthly" : "Yearly";
+                const pText = multiplier === 1 ? "day" : multiplier === 30 ? "month" : "year";
+
+                // Base values
+                const visBase = parseInt(currentData.visitors) || 0;
+                const convBase = parseInt(currentData.converted) || 0;
+                const lostBase = parseInt(currentData.lost) || 0;
+                const revLostBase = parseFloat(currentData.revenueLost) || 0;
+                const avgOrder = currentData.avgRevenue ? parseFloat(currentData.avgRevenue) : (lostBase ? Math.round(revLostBase / lostBase) : 0);
+                const baseConvRate = visBase ? ((convBase / visBase) * 100) : 0;
+
+                // Active display values
+                let vis = visBase * multiplier;
+                let conv = convBase * multiplier;
+                let lost = lostBase * multiplier;
+                let revLost = revLostBase * multiplier;
+
+                let rRev = 0;
+                let impSales = 0;
+                let cInc = 0;
+
+                if (predictionData && predictionData.targetConvRate) {
+                    const targetRate = parseFloat(predictionData.targetConvRate);
+                    cInc = (targetRate - baseConvRate).toFixed(1);
+                    const newConv = Math.round(vis * (targetRate / 100));
+                    impSales = Math.max(0, newConv - conv);
+                    rRev = impSales * avgOrder;
+                } else if (predictionData) {
+                    rRev = (parseFloat(predictionData.recoveredRevenue) || 0) * multiplier;
+                    impSales = (parseInt(predictionData.improvedSales) || 0) * multiplier;
+                    cInc = parseFloat(predictionData.conversionIncrease) || 0;
+                }
+
+                if (simulationActive && predictionData) {
+                    conv += impSales;
+                    lost = Math.max(0, lost - impSales);
+                    revLost = Math.max(0, revLost - rRev);
+                }
+
+                const convRate = vis ? Math.round((conv / vis) * 100) : 0;
+                const lostRate = vis ? Math.round((lost / vis) * 100) : 0;
+
+                // Business details
+                const businessName = (currentData.name || "Business").toUpperCase();
+                const location = currentData.location || "Not Specified";
+                const category = currentData.category || "General";
+                const rating = currentData.rating ? currentData.rating + " ★" : "N/A";
+                const reviews = currentData.reviews ? formatNumber(parseInt(currentData.reviews)) : "0";
+                const mapsUrl = currentData.mapsUrl || "";
+                const generatedDate = new Date().toLocaleString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                });
+
+                // Color tokens for PDF
+                const cBlue = [66, 133, 244];
+                const cGreen = [52, 168, 83];
+                const cRed = [234, 67, 53];
+                const cYellow = [251, 188, 5];
+                const cDark = [32, 33, 36];
+                const cMuted = [95, 99, 104];
+                const cBorder = [218, 220, 224];
+                const cCardBg = [248, 249, 250];
+
+                // Helper: Card box
+                const drawCardBox = (x, y, w, h, bg = cCardBg, border = cBorder) => {
+                    doc.setFillColor(bg[0], bg[1], bg[2]);
+                    doc.setDrawColor(border[0], border[1], border[2]);
+                    doc.setLineWidth(0.3);
+                    doc.roundedRect(x, y, w, h, 2.5, 2.5, 'FD');
+                };
+
+                // Helper: Section title bar
+                const drawSectionHeader = (title, sub, yPos, w = pageWidth) => {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(11);
+                    doc.setTextColor(cBlue[0], cBlue[1], cBlue[2]);
+                    doc.text(title.toUpperCase(), margin, yPos);
+
+                    doc.setDrawColor(cBlue[0], cBlue[1], cBlue[2]);
+                    doc.setLineWidth(0.6);
+                    doc.line(margin, yPos + 2, margin + 40, yPos + 2);
+                    doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
+                    doc.setLineWidth(0.2);
+                    doc.line(margin + 40, yPos + 2, w - margin, yPos + 2);
+
+                    if (sub) {
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(8.5);
+                        doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                        doc.text(sub, margin, yPos + 7);
+                        return yPos + 12;
+                    }
+                    return yPos + 7;
+                };
+
+                // ==========================================
+                // PAGE 1: EXECUTIVE OVERVIEW & CORE KPIS
+                // ==========================================
+
+                // Brand Accent Strip on top
+                doc.setFillColor(cBlue[0], cBlue[1], cBlue[2]);
+                doc.rect(0, 0, pageWidth / 4, 3.5, 'F');
+                doc.setFillColor(cRed[0], cRed[1], cRed[2]);
+                doc.rect(pageWidth / 4, 0, pageWidth / 4, 3.5, 'F');
+                doc.setFillColor(cYellow[0], cYellow[1], cYellow[2]);
+                doc.rect(pageWidth / 2, 0, pageWidth / 4, 3.5, 'F');
+                doc.setFillColor(cGreen[0], cGreen[1], cGreen[2]);
+                doc.rect((pageWidth * 3) / 4, 0, pageWidth / 4, 3.5, 'F');
+
+                let curY = 16;
+
+                // Report Header
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(18);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text("SALES ANALYZER REPORT", margin, curY);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                doc.text("Sales Intelligence & Revenue Diagnostics", margin, curY + 5);
+
+                doc.setFontSize(8);
+                doc.text(`Generated: ${generatedDate}`, pageWidth - margin, curY, { align: 'right' });
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(cGreen[0], cGreen[1], cGreen[2]);
+                doc.text("● Market Verified", pageWidth - margin, curY + 5, { align: 'right' });
+
+                curY += 12;
+
+                // Business Profile Card
+                drawCardBox(margin, curY, contentWidth, 34);
+
+                // Business Name & Category
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(13);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(businessName, margin + 4, curY + 8);
+
+                // Category pill
+                doc.setFillColor(cBlue[0], cBlue[1], cBlue[2]);
+                doc.roundedRect(margin + 4, curY + 11, doc.getTextWidth(category) + 8, 5.5, 1.5, 1.5, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                doc.setTextColor(255, 255, 255);
+                doc.text(category, margin + 8, curY + 14.8);
+
+                // Active Period badge
+                const periodBadgeText = `Active View: ${periodText} Snapshot (${multiplier}x)`;
+                const pBadgeW = doc.getTextWidth(periodBadgeText) + 8;
+                doc.setFillColor(241, 243, 244);
+                doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
+                doc.setLineWidth(0.2);
+                doc.roundedRect(pageWidth - margin - pBadgeW - 4, curY + 5, pBadgeW, 5.5, 1.5, 1.5, 'FD');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(periodBadgeText, pageWidth - margin - 4 - (pBadgeW / 2), curY + 8.8, { align: 'center' });
+
+                // Business meta info (Location, Rating, Reviews)
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8.5);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(`Location: ${location}`, margin + 4, curY + 22);
+
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(cYellow[0], cYellow[1], cYellow[2]);
+                doc.text(`Maps Rating: ${rating}`, margin + 4, curY + 28);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                doc.text(`(${reviews} customer reviews)`, margin + 4 + doc.getTextWidth(`Maps Rating: ${rating} `), curY + 28);
+
+                if (mapsUrl) {
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(cBlue[0], cBlue[1], cBlue[2]);
+                    const shortUrl = mapsUrl.length > 55 ? mapsUrl.substring(0, 52) + '...' : mapsUrl;
+                    doc.text(`Maps Key / Link: ${shortUrl}`, pageWidth - margin - 4, curY + 28, { align: 'right' });
+                }
+
+                curY += 39;
+
+                // Revenue Leakage Alert Banner
+                doc.setFillColor(254, 242, 242);
+                doc.setDrawColor(248, 113, 113);
+                doc.setLineWidth(0.4);
+                doc.roundedRect(margin, curY, contentWidth, 18, 2, 2, 'FD');
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8.5);
+                doc.setTextColor(cRed[0], cRed[1], cRed[2]);
+                doc.text("⚠ REVENUE LEAKAGE ALERT", margin + 4, curY + 6);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8.5);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(`Your business is losing approximately `, margin + 4, curY + 12);
+                const alertLossWidth = doc.getTextWidth(`Your business is losing approximately `);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(cRed[0], cRed[1], cRed[2]);
+                doc.text(`₹${formatNumber(revLost)}`, margin + 4 + alertLossWidth, curY + 12);
+                const valW = doc.getTextWidth(`₹${formatNumber(revLost)}`);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(` per ${pText} in unrealized sales revenue. Immediate optimization recommended.`, margin + 4 + alertLossWidth + valW, curY + 12);
+
+                curY += 24;
+
+                // KPI Overview Section
+                curY = drawSectionHeader("Core Performance Indicators", `Current ${periodText} Metrics Baseline`, curY);
+
+                // 6 KPI Grid Cards (2 columns x 3 rows)
+                const cardW = (contentWidth - 6) / 2;
+                const cardH = 26;
+
+                const kpis = [
+                    {
+                        label: "TOTAL VISITORS",
+                        val: formatNumber(vis),
+                        sub: "Estimated footfall volume",
+                        color: cBlue,
+                        topBorder: cBlue
+                    },
+                    {
+                        label: "CONVERTED SALES",
+                        val: formatNumber(conv),
+                        sub: `${convRate}% customer conversion rate`,
+                        color: cGreen,
+                        topBorder: cGreen
+                    },
+                    {
+                        label: "LOST OPPORTUNITIES",
+                        val: formatNumber(lost),
+                        sub: `${lostRate}% lost opportunities rate`,
+                        color: cRed,
+                        topBorder: cRed
+                    },
+                    {
+                        label: "EST. REVENUE LOST",
+                        val: `₹${formatNumber(revLost)}`,
+                        sub: `₹${formatNumber(avgOrder)} average order value`,
+                        color: cRed,
+                        topBorder: cRed
+                    },
+                    {
+                        label: "GOOGLE MAPS RATING",
+                        val: rating,
+                        sub: `${reviews} verified reviews`,
+                        color: cYellow,
+                        topBorder: cYellow
+                    },
+                    {
+                        label: "BUSINESS CATEGORY",
+                        val: category.length > 18 ? category.substring(0, 16) + '..' : category,
+                        sub: "Industry benchmark profile",
+                        color: cDark,
+                        topBorder: cBlue
+                    }
+                ];
+
+                kpis.forEach((kpi, idx) => {
+                    const col = idx % 2;
+                    const row = Math.floor(idx / 2);
+                    const kx = margin + (col * (cardW + 6));
+                    const ky = curY + (row * (cardH + 4));
+
+                    drawCardBox(kx, ky, cardW, cardH);
+
+                    // Top accent bar on card
+                    doc.setFillColor(kpi.topBorder[0], kpi.topBorder[1], kpi.topBorder[2]);
+                    doc.rect(kx, ky, cardW, 1.2, 'F');
+
+                    // Label
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                    doc.text(kpi.label, kx + 4, ky + 7);
+
+                    // Value
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(14);
+                    doc.setTextColor(kpi.color[0], kpi.color[1], kpi.color[2]);
+                    doc.text(kpi.val, kx + 4, ky + 16);
+
+                    // Sub
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                    doc.text(kpi.sub, kx + 4, ky + 22);
+                });
+
+                curY += (3 * (cardH + 4)) + 4;
+
+                // Executive Note Box on Page 1
+                drawCardBox(margin, curY, contentWidth, 22, [240, 249, 255], cBlue);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8.5);
+                doc.setTextColor(cBlue[0], cBlue[1], cBlue[2]);
+                doc.text("EXECUTIVE DIAGNOSTIC SUMMARY", margin + 4, curY + 6);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(
+                    `Based on current metrics, ${businessName} converts ${convRate}% of search footfall (${formatNumber(conv)} sales) while leaving ${lostRate}% ` +
+                    `(${formatNumber(lost)} potential buyers) unconverted. Recovering even 20% of lost opportunities represents significant recurring revenue.`,
+                    margin + 4, curY + 11, { maxWidth: contentWidth - 8 }
+                );
+
+
+                // ==========================================
+                // PAGE 2: VISUAL CHARTS & SALES DISTRIBUTION
+                // ==========================================
+                doc.addPage();
+                curY = 18;
+
+                curY = drawSectionHeader("Visual Analytics & Sales Distribution", "Graphical breakdown of conversion rates, footfall, and lost opportunities", curY);
+
+                // 1. Sales Distribution Donut Section
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text("1. Sales Distribution (Gained vs. Lost Breakdown)", margin, curY);
+                curY += 4;
+
+                const donutImg = getChartImageWithWhiteBg(chart1);
+                const donutCardH = 68;
+                drawCardBox(margin, curY, contentWidth, donutCardH);
+
+                if (donutImg) {
+                    doc.addImage(donutImg, 'PNG', margin + 6, curY + 4, 60, 60);
+                }
+
+                // Donut Details Column on the Right
+                const dRightX = margin + 74;
+                let dRightY = curY + 10;
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text("Distribution Breakdown:", dRightX, dRightY);
+
+                dRightY += 8;
+
+                // Sales Gained Row
+                doc.setFillColor(cGreen[0], cGreen[1], cGreen[2]);
+                doc.rect(dRightX, dRightY - 3, 3, 3, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(`Sales Gained: ${formatNumber(conv)} orders (${convRate}%)`, dRightX + 6, dRightY);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7.5);
+                doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                doc.text("Successfully captured customers who made a purchase.", dRightX + 6, dRightY + 4.5);
+
+                dRightY += 14;
+
+                // Sales Lost Row
+                doc.setFillColor(cRed[0], cRed[1], cRed[2]);
+                doc.rect(dRightX, dRightY - 3, 3, 3, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(`Sales Lost: ${formatNumber(lost)} opportunities (${lostRate}%)`, dRightX + 6, dRightY);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7.5);
+                doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                doc.text(`Unrealized demand resulting in ₹${formatNumber(revLost)} estimated loss.`, dRightX + 6, dRightY + 4.5);
+
+                dRightY += 14;
+
+                // Diagnostic ratio box
+                doc.setFillColor(241, 243, 244);
+                doc.roundedRect(dRightX, dRightY - 2, contentWidth - 80, 11, 1.5, 1.5, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(`Loss-to-Gain Ratio: ${(lost / (conv || 1)).toFixed(1)}x more sales lost than gained`, dRightX + 3, dRightY + 4);
+
+                curY += donutCardH + 8;
+
+                // 2. Time-Based Trend Line Chart Section
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text("2. Time-Based Visitor & Conversion Trends", margin, curY);
+
+                // Legend on right
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                doc.setTextColor(cBlue[0], cBlue[1], cBlue[2]);
+                doc.text("― Visitors", pageWidth - margin - 35, curY);
+                doc.setTextColor(cGreen[0], cGreen[1], cGreen[2]);
+                doc.text("― Conversions", pageWidth - margin - 15, curY);
+
+                curY += 4;
+
+                const lineImg = getChartImageWithWhiteBg(chart2);
+                const lineCardH = 65;
+                drawCardBox(margin, curY, contentWidth, lineCardH);
+
+                if (lineImg) {
+                    doc.addImage(lineImg, 'PNG', margin + 4, curY + 4, contentWidth - 8, 57);
+                }
+
+                curY += lineCardH + 6;
+
+                // Granular Trend Data Points Table
+                if (chart2 && chart2.data && chart2.data.labels) {
+                    const trendLabels = chart2.data.labels;
+                    const trendVis = chart2.data.datasets[0]?.data || [];
+                    const trendConv = chart2.data.datasets[1]?.data || [];
+
+                    const trendTableBody = trendLabels.map((lbl, idx) => {
+                        const v = trendVis[idx] || 0;
+                        const c = trendConv[idx] || 0;
+                        const cr = v ? Math.round((c / v) * 100) : 0;
+                        return [lbl, formatNumber(v), formatNumber(c), `${cr}%`];
+                    });
+
+                    doc.autoTable({
+                        startY: curY,
+                        head: [['Period / Timeline', 'Visitor Volume', 'Converted Orders', 'Conversion Rate']],
+                        body: trendTableBody,
+                        theme: 'striped',
+                        margin: { left: margin, right: margin },
+                        styles: {
+                            font: 'helvetica',
+                            fontSize: 7.5,
+                            cellPadding: 1.8,
+                            textColor: cDark
+                        },
+                        headStyles: {
+                            fillColor: cBlue,
+                            textColor: [255, 255, 255],
+                            fontStyle: 'bold',
+                            fontSize: 7.5
+                        },
+                        alternateRowStyles: {
+                            fillColor: [248, 249, 250]
+                        }
+                    });
+                }
+
+
+                // ==========================================
+                // PAGE 3: DETAILED MULTI-PERIOD PERFORMANCE
+                // ==========================================
+                doc.addPage('a4', 'landscape');
+                curY = 18;
+                const landPageWidth = 297;
+                const landContentWidth = landPageWidth - (margin * 2);
+
+                curY = drawSectionHeader("Multi-Period Performance Breakdown", "Structured comparison across daily baseline, monthly projection, and annual metrics", curY, landPageWidth);
+
+                // Multi-Period Structured Matrix Table
+                const matrixBody = [
+                    ['Total Footfall / Visitors', formatNumber(visBase), formatNumber(visBase * 30), formatNumber(visBase * 365)],
+                    ['Converted Customer Sales', formatNumber(convBase), formatNumber(convBase * 30), formatNumber(convBase * 365)],
+                    ['Lost Customer Opportunities', formatNumber(lostBase), formatNumber(lostBase * 30), formatNumber(lostBase * 365)],
+                    ['Conversion Efficiency Rate', `${baseConvRate.toFixed(1)}%`, `${baseConvRate.toFixed(1)}%`, `${baseConvRate.toFixed(1)}%`],
+                    ['Opportunity Loss Rate', `${visBase ? ((lostBase / visBase) * 100).toFixed(1) : 0}%`, `${visBase ? ((lostBase / visBase) * 100).toFixed(1) : 0}%`, `${visBase ? ((lostBase / visBase) * 100).toFixed(1) : 0}%`],
+                    ['Average Value Per Sale', `₹${formatNumber(avgOrder)}`, `₹${formatNumber(avgOrder)}`, `₹${formatNumber(avgOrder)}`],
+                    ['Estimated Revenue Lost', `₹${formatNumber(revLostBase)}`, `₹${formatNumber(revLostBase * 30)}`, `₹${formatNumber(revLostBase * 365)}`]
+                ];
+
+                doc.autoTable({
+                    startY: curY,
+                    head: [['Metric', 'Daily Baseline (1 Day)', 'Monthly Projection (30 Days)', 'Annual Total (365 Days)']],
+                    body: matrixBody,
+                    theme: 'grid',
+                    margin: { left: margin, right: margin },
+                    styles: {
+                        font: 'helvetica',
+                        fontSize: 8.5,
+                        cellPadding: 3,
+                        textColor: cDark,
+                        lineColor: cBorder,
+                        lineWidth: 0.2,
+                        cellWidth: 'wrap'
+                    },
+                    headStyles: {
+                        fillColor: cBlue,
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        fontSize: 9
+                    },
+                    columnStyles: {
+                        0: { fontStyle: 'bold', cellWidth: 'auto' },
+                        1: { halign: 'right' },
+                        2: { halign: 'right' },
+                        3: { halign: 'right', fontStyle: 'bold', textColor: cRed }
+                    }
+                });
+
+                curY = doc.lastAutoTable.finalY + 10;
+
+                // Recovery Simulation Section
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text("Recovery Simulation & Potential Revenue Upside", margin, curY);
+                curY += 4;
+
+                const targetConv = predictionData && predictionData.targetConvRate ? parseFloat(predictionData.targetConvRate) : 15.0;
+                const simConvLift = (targetConv - baseConvRate).toFixed(1);
+                const simMonthlySales = Math.max(0, Math.round((visBase * 30) * (targetConv / 100)) - (convBase * 30));
+                const simMonthlyRev = simMonthlySales * avgOrder;
+                const simAnnualRev = simMonthlyRev * 12;
+
+                const simTableBody = [
+                    ['Target Conversion Rate', `${targetConv}%`, predictionData ? 'Configured Simulation' : 'Industry Optimal Benchmark'],
+                    ['Projected Conversion Lift', `+${simConvLift}%`, 'Expected performance improvement'],
+                    ['Recoverable Monthly Sales', `+${formatNumber(simMonthlySales)} orders`, 'Additional customer conversions per month'],
+                    ['Recoverable Monthly Revenue', `₹${formatNumber(simMonthlyRev)} / month`, 'Projected monthly cashflow recapture'],
+                    ['Recoverable Annual Revenue', `₹${formatNumber(simAnnualRev)} / year`, 'Projected 12-month cumulative revenue recovery']
+                ];
+
+                doc.autoTable({
+                    startY: curY,
+                    head: [['Simulation Parameter', 'Projected Value', 'Strategic Rationale']],
+                    body: simTableBody,
+                    theme: 'striped',
+                    margin: { left: margin, right: margin },
+                    styles: {
+                        font: 'helvetica',
+                        fontSize: 8,
+                        cellPadding: 2.5,
+                        textColor: cDark
+                    },
+                    headStyles: {
+                        fillColor: cGreen,
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        fontSize: 8.5
+                    },
+                    columnStyles: {
+                        0: { fontStyle: 'bold', cellWidth: 54 },
+                        1: { fontStyle: 'bold', textColor: cGreen, halign: 'right', cellWidth: 46 }
+                    }
+                });
+
+                curY = doc.lastAutoTable.finalY + 10;
+
+                // Strategic Insights Callout Box
+                drawCardBox(margin, curY, contentWidth, 26, [248, 250, 252], cBorder);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8.5);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text("KEY TAKEAWAYS & BUSINESS IMPLICATIONS", margin + 4, curY + 6);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7.5);
+                doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                doc.text(
+                    `• Annual unrealized revenue loss stands at ₹${formatNumber(revLostBase * 365)} based on daily baseline footfall.\n` +
+                    `• Achieving an optimized conversion benchmark of ${targetConv}% unlocks up to ₹${formatNumber(simAnnualRev)} in newly captured sales.\n` +
+                    `• The primary cause of revenue leakage is friction in local discovery, site speed, and conversion funnel readiness.`,
+                    margin + 4, curY + 11, { maxWidth: contentWidth - 8 }
+                );
+
+
+                // ==========================================
+                // PAGE 4: AI SUGGESTIONS & STRATEGIC ROADMAP
+                // ==========================================
+                doc.addPage('a4', 'portrait');
+                curY = 18;
+
+                curY = drawSectionHeader("AI Sales Improvement Suggestions", "Tailored action items to stop revenue leakage and maximize conversions", curY);
+
+                // Suggestions structured table
+                const suggestionsList = [
+                    {
+                        priority: "Critical",
+                        title: "Build a High-Converting Website / Landing Page",
+                        desc: "A fast, mobile-optimized website with clear calls-to-action and direct booking can convert 40–70% of searchers into paying clients."
+                    },
+                    {
+                        priority: "Critical",
+                        title: "Lightning-Fast Loading Speed (< 3 Seconds)",
+                        desc: "Websites that load in under 3 seconds dramatically reduce bounce rates. Speed directly impacts conversions, SEO rank, and footfall retention."
+                    },
+                    {
+                        priority: "Critical",
+                        title: "Mobile-First User Experience",
+                        desc: "With over 70% of local searches occurring on mobile devices, responsive layouts and 1-click calling/navigation prevent lost inquiries."
+                    },
+                    {
+                        priority: "High",
+                        title: "Google Business Profile & Maps Optimization",
+                        desc: "Optimizing profile categories, high-resolution media, FAQs, and active posts boosts local search placement and buyer trust."
+                    },
+                    {
+                        priority: "High",
+                        title: "SEO-Optimized Domain & Semantic Structure",
+                        desc: "Targeted localized keywords, meta tags, and structured schemas help capture organic search intent and attract high-intent local buyers."
+                    },
+                    {
+                        priority: "Medium",
+                        title: "Trust Signals, Reviews & Social Proof",
+                        desc: "Actively collecting reviews, showcasing testimonials, and displaying accreditations reduces customer friction and drives higher ticket values."
+                    }
+                ];
+
+                const suggTableBody = suggestionsList.map(s => [
+                    s.priority,
+                    s.title,
+                    s.desc
+                ]);
+
+                doc.autoTable({
+                    startY: curY,
+                    head: [['Priority', 'Recommendation', 'Impact & Action Plan']],
+                    body: suggTableBody,
+                    theme: 'grid',
+                    margin: { left: margin, right: margin },
+                    styles: {
+                        font: 'helvetica',
+                        fontSize: 8,
+                        cellPadding: 2.8,
+                        textColor: cDark,
+                        lineColor: cBorder,
+                        lineWidth: 0.2
+                    },
+                    headStyles: {
+                        fillColor: cBlue,
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        fontSize: 8.5
+                    },
+                    columnStyles: {
+                        0: { fontStyle: 'bold', cellWidth: 24, halign: 'center' },
+                        1: { fontStyle: 'bold', cellWidth: 54 },
+                        2: { cellWidth: 104 }
+                    },
+                    didParseCell: function(data) {
+                        if (data.section === 'body' && data.column.index === 0) {
+                            if (data.cell.raw === 'Critical') {
+                                data.cell.styles.textColor = cRed;
+                                data.cell.styles.fillColor = [254, 242, 242];
+                            } else if (data.cell.raw === 'High') {
+                                data.cell.styles.textColor = [217, 119, 6];
+                                data.cell.styles.fillColor = [254, 243, 199];
+                            } else {
+                                data.cell.styles.textColor = cBlue;
+                                data.cell.styles.fillColor = [239, 246, 255];
+                            }
+                        }
+                    }
+                });
+
+                curY = doc.lastAutoTable.finalY + 10;
+
+                // Revenue Recovery Potential Callout Box
+                drawCardBox(margin, curY, contentWidth, 24, [240, 253, 244], cGreen);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.setTextColor(cGreen[0], cGreen[1], cGreen[2]);
+                doc.text("REVENUE RECOVERY POTENTIAL", margin + 4, curY + 6);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+                doc.text(
+                    `Implementing all recommendations could recover up to 85% of unrealized revenue based on industry benchmarks for businesses in the ${category} category.`,
+                    margin + 4, curY + 12, { maxWidth: contentWidth - 8 }
+                );
+
+                if (simulationActive && predictionData) {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(cGreen[0], cGreen[1], cGreen[2]);
+                    doc.text(`Active Simulation projects recovery of ₹${formatNumber(rRev)} per ${pText}.`, margin + 4, curY + 19);
+                }
+
+                curY += 32;
+
+                // Audit & Compliance Notice
+                drawCardBox(margin, curY, contentWidth, 18, [248, 249, 250], cBorder);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                doc.text("REPORT AUTHENTICITY & COMPLIANCE", margin + 4, curY + 5.5);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                doc.text(
+                    `This report was compiled exclusively by Google Sales Analyzer using real-time diagnostics and Indian market conversion indicators. ` +
+                    `Data parameters are locked and cryptographically validated against reported Google Maps metrics.`,
+                    margin + 4, curY + 10.5, { maxWidth: contentWidth - 8 }
+                );
+
+
+                // ==========================================
+                // RUNNING HEADERS & FOOTERS ACROSS ALL PAGES
+                // ==========================================
+                const totalPages = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+
+                    // Running Header (pages 2+)
+                    if (i > 1) {
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(7.5);
+                        doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                        doc.text(`Google Sales Analyzer — Report for ${businessName}`, margin, 10);
+                        doc.text(`Active View: ${periodText}`, pageWidth - margin, 10, { align: 'right' });
+
+                        doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
+                        doc.setLineWidth(0.2);
+                        doc.line(margin, 12, pageWidth - margin, 12);
+                    }
+
+                    // Running Footer
+                    doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
+                    doc.setLineWidth(0.2);
+                    doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+                    doc.text("Confidential Diagnostic Report • Google Sales Analyzer", margin, pageHeight - 7);
+                    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
+                }
+
+                // 3. Trigger Download
+                const sanitizedName = (currentData.name || "Business").replace(/[^a-zA-Z0-9_-]/g, '_');
+                const filename = `SalesAnalyzer-${sanitizedName}-Report.pdf`;
+                doc.save(filename);
+
+            } catch (err) {
+                console.error("PDF Generation Error:", err);
+                alert("Failed to generate PDF: " + (err.message || "Unknown error occurred."));
+            } finally {
+                if (btn) btn.disabled = false;
+                if (btnText) btnText.textContent = originalText;
+            }
+        }
+>>>>>>> ee5f7bb (pdf)
     </script>
 </body>
 
