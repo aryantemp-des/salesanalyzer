@@ -50,7 +50,12 @@
 <body>
     <div class="container">
         <h1>Secondary Admin Panel</h1>
-        <div class="subtitle">Setup Recovery & Prediction Engine.</div>
+        <div class="subtitle">
+            Setup Recovery & Prediction Engine.
+            <div style="margin-top:0.75rem; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:8px; padding:0.6rem 1rem; font-size:0.9rem;">
+                ✨ <b>New:</b> Primary & Secondary Admins are now unified! <a href="admin.html" style="color:#34d399; font-weight:700; text-decoration:underline; margin-left:0.3rem;">Open admin.html</a>
+            </div>
+        </div>
         
         <form id="admin2Form" onsubmit="saveData(event)">
             
@@ -68,11 +73,23 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const latestStr = localStorage.getItem("admin2_latest");
+                if (latestStr) {
+                    const saved = JSON.parse(latestStr);
+                    if (saved.website) document.getElementById("websiteUrl").value = saved.website;
+                    if (saved.targetConvRate) document.getElementById("targetConvRate").value = saved.targetConvRate;
+                }
+            } catch (err) {}
+        });
+
         function saveData(e) {
             e.preventDefault();
             const webKey = document.getElementById("websiteUrl").value.trim();
             if(!webKey) return alert("Website URL is required as a key.");
             
+            const webWithoutSlash = webKey.replace(/\/+$/, "");
             const storageKey = "admin2_" + webKey;
             
             const data = {
@@ -83,6 +100,10 @@
             
             try {
                 localStorage.setItem(storageKey, JSON.stringify(data));
+                if (webWithoutSlash !== webKey) {
+                    localStorage.setItem("admin2_" + webWithoutSlash, JSON.stringify(data));
+                }
+                localStorage.setItem("admin2_latest", JSON.stringify(data));
                 showAlert("Simulation Data stored cleanly for Vercel / GitHub deployment!");
             } catch (err) {
                 console.error("Storage Error:", err);

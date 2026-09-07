@@ -58,7 +58,12 @@
 <body>
     <div class="container">
         <h1>Primary Admin Panel</h1>
-        <div class="subtitle">Control main business & sales data.</div>
+        <div class="subtitle">
+            Control main business & sales data.
+            <div style="margin-top:0.75rem; background:rgba(6,182,212,0.1); border:1px solid rgba(6,182,212,0.3); border-radius:8px; padding:0.6rem 1rem; font-size:0.9rem;">
+                ✨ <b>New:</b> Primary & Secondary Admins are now unified! <a href="admin.html" style="color:#38bdf8; font-weight:700; text-decoration:underline; margin-left:0.3rem;">Open admin.html</a>
+            </div>
+        </div>
         
         <form id="admin1Form" onsubmit="saveData(event)">
             <div class="section-title">Core Business Identity</div>
@@ -148,20 +153,40 @@
             convertedInput.addEventListener("input", calcData);
             avgRevInput.addEventListener("input", calcData);
             lostInput.addEventListener("input", calcData); // if manually edited, adjust revlost
+
+            // Pre-fill previously saved data if available
+            try {
+                const latestStr = localStorage.getItem("admin1_latest");
+                if (latestStr) {
+                    const saved = JSON.parse(latestStr);
+                    if (saved.mapsUrl) document.getElementById("mapsUrl").value = saved.mapsUrl;
+                    if (saved.name) document.getElementById("businessName").value = saved.name;
+                    if (saved.location) document.getElementById("location").value = saved.location;
+                    if (saved.category) document.getElementById("category").value = saved.category;
+                    if (saved.rating) document.getElementById("rating").value = saved.rating;
+                    if (saved.reviews) document.getElementById("reviews").value = saved.reviews;
+                    if (saved.visitors) document.getElementById("totalVisitors").value = saved.visitors;
+                    if (saved.converted) document.getElementById("convertedSales").value = saved.converted;
+                    if (saved.lost) document.getElementById("lostSales").value = saved.lost;
+                    if (saved.revenueLost) document.getElementById("revenueLost").value = saved.revenueLost;
+                    if (saved.avgRevenue) document.getElementById("avgRevenue").value = saved.avgRevenue;
+                }
+            } catch (err) {}
         });
 
         function saveData(e) {
             e.preventDefault();
-            const urlKey = document.getElementById("mapsUrl").value.trim();
-            if(!urlKey) return alert("Google Maps URL is required as a key.");
+            const rawUrl = document.getElementById("mapsUrl").value.trim();
+            if(!rawUrl) return alert("Google Maps URL is required as a key.");
             
-            const storageKey = "admin1_" + urlKey;
+            const urlWithoutSlash = rawUrl.replace(/\/+$/, "");
+            const storageKey = "admin1_" + rawUrl;
             
             const data = {
-                name: document.getElementById("businessName").value,
-                mapsUrl: urlKey,
-                location: document.getElementById("location").value,
-                category: document.getElementById("category").value,
+                name: document.getElementById("businessName").value.trim(),
+                mapsUrl: rawUrl,
+                location: document.getElementById("location").value.trim(),
+                category: document.getElementById("category").value.trim(),
                 rating: document.getElementById("rating").value,
                 reviews: document.getElementById("reviews").value,
                 visitors: document.getElementById("totalVisitors").value,
@@ -174,6 +199,10 @@
             
             try {
                 localStorage.setItem(storageKey, JSON.stringify(data));
+                if (urlWithoutSlash !== rawUrl) {
+                    localStorage.setItem("admin1_" + urlWithoutSlash, JSON.stringify(data));
+                }
+                localStorage.setItem("admin1_latest", JSON.stringify(data));
                 showAlert("Business Data successfully stored for Vercel / GitHub Pages!");
             } catch (err) {
                 console.error("Storage Error:", err);

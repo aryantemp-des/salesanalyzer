@@ -98,8 +98,6 @@
             color: var(--text-main);
         }
 
-<<<<<<< HEAD
-=======
         .btn-pdf {
             background: linear-gradient(135deg, var(--cyan), #1a73e8);
             border: none;
@@ -129,7 +127,6 @@
             box-shadow: none;
         }
 
->>>>>>> ee5f7bb (pdf)
         /* General Container */
         .container {
             max-width: 1280px;
@@ -846,9 +843,11 @@
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                             <circle cx="12" cy="10" r="3" />
                         </svg>
-                        <input type="text" id="inputMaps" placeholder="https://maps.google.com/..." required>
+                        <input type="text" id="inputMaps" placeholder="https://maps.google.com/..." required oninput="clearInputError()">
                     </div>
                 </div>
+
+                <div id="input-error-msg" style="display:none; color:#ea4335; background:rgba(234,67,53,0.1); border:1px solid rgba(234,67,53,0.3); padding:0.85rem 1rem; border-radius:8px; font-size:0.95rem; margin-bottom:1.25rem; font-weight:600; text-align:center;"></div>
 
                 <button type="submit" class="btn-check-sales">Analyze Sales</button>
             </form>
@@ -883,8 +882,15 @@
                             viewBox="0 0 24 24">
                             <path d="m15 18-6-6 6-6" />
                         </svg></button>
-                    <h1 id="dh-name">WRVREWV</h1>
-                    <span class="badge" id="dh-cat">Home Services</span>
+                    <h1 id="dh-name">-</h1>
+                    <span class="badge" id="dh-cat">-</span>
+                    <span class="badge" id="dh-location" style="display:none; background:rgba(66, 133, 244, 0.1); color:var(--cyan); border: 1px solid rgba(66, 133, 244, 0.3); align-items:center; gap:0.35rem;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" style="vertical-align:-1px;">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                            <circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        <span id="dh-location-text"></span>
+                    </span>
                     <div
                         style="display:flex; align-items:center; gap:0.4rem; background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.2); padding:0.4rem 0.8rem; border-radius:6px; font-size:0.75rem; font-weight:600; margin-left: 0.5rem; text-transform:uppercase;">
                         <svg width="14" height="14" viewBox="0 0 24 24">
@@ -898,8 +904,6 @@
                         <span class="countdown-title">Time to Refresh</span>
                         <span class="countdown-timer" id="istCountdown">00:00:00</span>
                     </div>
-<<<<<<< HEAD
-=======
                     <button class="btn-pdf" id="btnExportPDF" onclick="exportSalesAnalyzerPDF()" title="Download complete SalesAnalyzer PDF report">
                         <svg width="16" height="16" viewBox="0 0 24 24">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -908,7 +912,6 @@
                         </svg>
                         <span id="btnExportPDFText">Download PDF</span>
                     </button>
->>>>>>> ee5f7bb (pdf)
                     <button class="btn-outline" onclick="location.reload()">New Analysis</button>
                 </div>
                 <p>Sales analysis report — real-time diagnostics (Data is securely locked and cannot be tampered with)
@@ -1233,22 +1236,174 @@
         updateISTCountdown();
 
         function formatNumber(num) {
-            return num.toLocaleString();
+            return (num || 0).toLocaleString();
+        }
+
+        function normalizeUrl(url) {
+            if (!url) return "";
+            let clean = url.trim();
+            try {
+                clean = decodeURIComponent(clean);
+            } catch (e) {}
+            clean = clean.replace(/^https?:\/\//i, "");
+            clean = clean.replace(/^www\./i, "");
+            clean = clean.replace(/\/+$/, "");
+            return clean.toLowerCase();
+        }
+
+        function extractMapsIdentifiers(url) {
+            if (!url) return {};
+            const ids = {};
+            const cidMatch = url.match(/[?&]cid=([0-9a-fA-Fx]+)/i);
+            if (cidMatch) ids.cid = cidMatch[1];
+
+            const placeIdMatch = url.match(/!1s(0x[0-9a-fA-F]+:[0-9a-fA-F]+)/i) || url.match(/[?&]place_id=([a-zA-Z0-9_-]+)/i);
+            if (placeIdMatch) ids.placeId = placeIdMatch[1];
+
+            const shortMatch = url.match(/(?:maps\.app\.goo\.gl|goo\.gl\/maps)\/([a-zA-Z0-9_-]+)/i);
+            if (shortMatch) ids.shortCode = shortMatch[1];
+
+            const placeNameMatch = url.match(/\/place\/([^\/@?]+)/i);
+            if (placeNameMatch) {
+                try {
+                    ids.placeName = decodeURIComponent(placeNameMatch[1].replace(/\+/g, " ")).toLowerCase().trim();
+                } catch (e) {}
+            }
+            return ids;
+        }
+
+        function findAdmin1Entry(inputKey) {
+            if (!inputKey) return null;
+            const trimmedInput = inputKey.trim();
+
+            // 1. Direct exact key lookup
+            let direct = localStorage.getItem("admin1_" + trimmedInput);
+            if (direct) {
+                try { return JSON.parse(direct); } catch (e) {}
+            }
+
+            // 2. Direct lookup without / with trailing slash
+            const noSlash = trimmedInput.replace(/\/+$/, "");
+            direct = localStorage.getItem("admin1_" + noSlash) || localStorage.getItem("admin1_" + noSlash + "/");
+            if (direct) {
+                try { return JSON.parse(direct); } catch (e) {}
+            }
+
+            // 3. Scan all localStorage items with prefix "admin1_"
+            const adminEntries = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith("admin1_") && key !== "admin1_latest") {
+                    try {
+                        const val = JSON.parse(localStorage.getItem(key));
+                        if (val && typeof val === "object") {
+                            adminEntries.push({ key: key, rawUrl: key.substring(7), data: val });
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            if (adminEntries.length === 0) {
+                const latestStr = localStorage.getItem("admin1_latest");
+                if (latestStr) {
+                    try {
+                        const latest = JSON.parse(latestStr);
+                        if (latest && typeof latest === "object") {
+                            adminEntries.push({ key: "admin1_latest", rawUrl: latest.mapsUrl || "", data: latest });
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            if (adminEntries.length === 0) {
+                // Absolutely no entries exist in admin1.html
+                return null;
+            }
+
+            const normInput = normalizeUrl(trimmedInput);
+            const inputIds = extractMapsIdentifiers(trimmedInput);
+
+            for (const entry of adminEntries) {
+                const storedUrl = entry.data.mapsUrl || entry.rawUrl || "";
+                const normStored = normalizeUrl(storedUrl);
+                const storedIds = extractMapsIdentifiers(storedUrl);
+
+                // Exact normalized URL match
+                if (normInput === normStored) {
+                    return entry.data;
+                }
+
+                // Strip query parameters and compare base paths
+                const normInputBase = normInput.split("?")[0];
+                const normStoredBase = normStored.split("?")[0];
+                if (normInputBase && normStoredBase && normInputBase === normStoredBase) {
+                    return entry.data;
+                }
+
+                // Match on Google Maps identifiers
+                if (inputIds.cid && storedIds.cid && inputIds.cid === storedIds.cid) {
+                    return entry.data;
+                }
+                if (inputIds.placeId && storedIds.placeId && inputIds.placeId === storedIds.placeId) {
+                    return entry.data;
+                }
+                if (inputIds.shortCode && storedIds.shortCode && inputIds.shortCode === storedIds.shortCode) {
+                    return entry.data;
+                }
+                if (inputIds.placeName && storedIds.placeName && inputIds.placeName === storedIds.placeName) {
+                    return entry.data;
+                }
+
+                // URL substring containment
+                if ((normInputBase && normStored.includes(normInputBase)) || (normStoredBase && normInput.includes(normStoredBase))) {
+                    return entry.data;
+                }
+
+                // Match on business name
+                if (entry.data.name && normInput.includes(entry.data.name.toLowerCase().trim())) {
+                    return entry.data;
+                }
+            }
+
+            // If exactly one business entry is saved in admin1.html, and the input is a Google Maps link
+            if (adminEntries.length === 1) {
+                const single = adminEntries[0];
+                const storedUrl = single.data.mapsUrl || single.rawUrl || "";
+                const isMapsInput = /maps|google|goo\.gl/i.test(trimmedInput);
+                const isMapsStored = /maps|google|goo\.gl/i.test(storedUrl);
+                if (isMapsInput && isMapsStored) {
+                    return single.data;
+                }
+            }
+
+            return null;
+        }
+
+        function clearInputError() {
+            const errEl = document.getElementById("input-error-msg");
+            if (errEl) errEl.style.display = "none";
         }
 
         function startAnalysis(e) {
             e.preventDefault();
+            clearInputError();
             const mapsKey = document.getElementById("inputMaps").value.trim();
 
             if (!mapsKey) return;
 
-            const dataStr = localStorage.getItem("admin1_" + mapsKey);
-            if (!dataStr) {
-                alert("Data Drive error! make sure enough token is available!");
+            const matchedData = findAdmin1Entry(mapsKey);
+            if (!matchedData) {
+                const errMsg = "Recharge more tokens of Google Maps for more website listings.";
+                const errEl = document.getElementById("input-error-msg");
+                if (errEl) {
+                    errEl.textContent = errMsg;
+                    errEl.style.display = "block";
+                }
+                alert(errMsg);
                 return;
             }
 
-            currentData = JSON.parse(dataStr);
+            currentData = matchedData;
             predictionData = null;
             simulationActive = false;
 
@@ -1304,10 +1459,12 @@
         }
 
         function renderDashboard() {
+            if (!currentData) return;
+
             const periodNode = document.getElementById("dashPeriodScale");
             const multiplier = periodNode ? parseInt(periodNode.value) : 1;
 
-            // Base Data
+            // Base Data from admin1.html
             let vis = (parseInt(currentData.visitors) || 0) * multiplier;
             let conv = (parseInt(currentData.converted) || 0) * multiplier;
             let lost = (parseInt(currentData.lost) || 0) * multiplier;
@@ -1345,25 +1502,37 @@
             const lostRate = vis ? Math.round((lost / vis) * 100) : 0;
             const periodLoss = revLost;
 
-            // Header
-            document.getElementById("dh-name").textContent = currentData.name.toUpperCase();
-            document.getElementById("dh-cat").textContent = currentData.category;
-            document.getElementById("dh-cat-card").textContent = currentData.category;
+            // Header - strictly from admin1.html
+            document.getElementById("dh-name").textContent = (currentData.name || "Business").toUpperCase();
+            document.getElementById("dh-cat").textContent = currentData.category || "General";
+            document.getElementById("dh-cat-card").textContent = currentData.category || "-";
+
+            const locBadge = document.getElementById("dh-location");
+            const locText = document.getElementById("dh-location-text");
+            if (locBadge && locText) {
+                if (currentData.location) {
+                    locText.textContent = currentData.location;
+                    locBadge.style.display = "inline-flex";
+                } else {
+                    locBadge.style.display = "none";
+                }
+            }
 
             // Alert
             const pText = multiplier === 1 ? "day" : multiplier === 30 ? "month" : "year";
             const alertBox = document.querySelector(".alert-box");
-            alertBox.style.border = "1px solid var(--red)";
-            alertBox.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" style="color:var(--red); align-self:flex-start;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-            <div>
-                <span class="badge sbg-red" style="margin-bottom:0.2rem; display:inline-block;">Alert</span><br/>
-                Your business is losing approximately <b>₹${formatNumber(periodLoss)}</b> per ${pText} in unrealized revenue. Immediate action is recommended.
-            </div>
-        `;
+            if (alertBox) {
+                alertBox.style.border = "1px solid var(--red)";
+                alertBox.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" style="color:var(--red); align-self:flex-start;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                <div>
+                    <span class="badge sbg-red" style="margin-bottom:0.2rem; display:inline-block;">Alert</span><br/>
+                    Your business is losing approximately <b>₹${formatNumber(periodLoss)}</b> per ${pText} in unrealized revenue. Immediate action is recommended.
+                </div>
+            `;
+            }
 
-
-            // Cards
+            // Cards - strictly from admin1.html
             document.getElementById("dh-visitors").textContent = formatNumber(vis);
             document.getElementById("dh-converted").textContent = formatNumber(conv);
             document.getElementById("dh-conv-rate").textContent = convRate;
@@ -1371,8 +1540,8 @@
             document.getElementById("dh-lost-rate").textContent = lostRate;
             document.getElementById("dh-revlost").textContent = "₹" + formatNumber(revLost);
             document.getElementById("dh-avg-order").textContent = "₹" + formatNumber(avgOrder);
-            document.getElementById("dh-rating").textContent = currentData.rating + " ★";
-            document.getElementById("dh-reviews").textContent = currentData.reviews;
+            document.getElementById("dh-rating").textContent = (currentData.rating || "0") + " ★";
+            document.getElementById("dh-reviews").textContent = formatNumber(parseInt(currentData.reviews) || 0);
 
             // Donut text
             document.getElementById("donut-pct").textContent = lostRate + "%";
@@ -1380,48 +1549,44 @@
             document.getElementById("dl-lost").textContent = lostRate;
 
             // Render Donut Chart
-            const ctxD = document.getElementById("donutChart").getContext("2d");
-            if (chart1) chart1.destroy();
-            chart1 = new Chart(ctxD, {
-                type: "doughnut",
-                data: {
-                    labels: ["Sales Gained", "Sales Lost"],
-                    datasets: [{
-                        data: [conv, lost],
-                        backgroundColor: ["#10b981", "#f43f5e"],
-                        borderWidth: 0,
-                        cutout: "75%"
-                    }]
-                },
-                options: { plugins: { legend: { display: false }, tooltip: { enabled: true } }, animation: { animateScale: true } }
-            });
+            try {
+                const ctxD = document.getElementById("donutChart").getContext("2d");
+                if (chart1) chart1.destroy();
+                chart1 = new Chart(ctxD, {
+                    type: "doughnut",
+                    data: {
+                        labels: ["Sales Gained", "Sales Lost"],
+                        datasets: [{
+                            data: [conv, lost],
+                            backgroundColor: ["#10b981", "#f43f5e"],
+                            borderWidth: 0,
+                            cutout: "75%"
+                        }]
+                    },
+                    options: { plugins: { legend: { display: false }, tooltip: { enabled: true } }, animation: { animateScale: true } }
+                });
+            } catch (e) {
+                console.warn("Donut chart error:", e);
+            }
 
             // Render Line Chart
             const isDaily = multiplier === 1;
             const points = isDaily ? 7 : 12;
-            document.getElementById("linechart-desc").textContent = multiplier === 1 ? "Daily visitor trends" : multiplier === 30 ? "Monthly visitor trends" : "Yearly visitor trends";
+            const descEl = document.getElementById("linechart-desc");
+            if (descEl) descEl.textContent = multiplier === 1 ? "Daily visitor trends" : multiplier === 30 ? "Monthly visitor trends" : "Yearly visitor trends";
 
             let visData = [];
             let convData = [];
 
             if (isDaily) {
-                visData[6] = 203;
-                convData[6] = 12;
+                visData[6] = vis;
+                convData[6] = conv;
 
-                visData[5] = vis;
-                convData[5] = conv;
-
-                visData[4] = Math.max(0, visData[5] + (Math.random() < 0.5 ? 1 : -1) * 100);
-                visData[3] = Math.max(0, visData[4] + (Math.random() < 0.5 ? 1 : -1) * 45);
-                visData[2] = Math.max(0, visData[3] + (Math.random() < 0.5 ? 1 : -1) * 95);
-                visData[1] = Math.max(0, visData[2] + (Math.random() < 0.5 ? 1 : -1) * 76);
-                visData[0] = Math.max(0, visData[1] + (Math.random() < 0.5 ? 1 : -1) * 50);
-
-                let cRate = vis > 0 ? (conv / vis) : 0;
-                for (let i = 4; i >= 0; i--) {
-                    let baseC = visData[i] * cRate;
-                    let noise = baseC * 0.1 * (Math.random() * 2 - 1);
-                    convData[i] = Math.max(0, Math.round(baseC + noise));
+                const dayMultipliers = [0.88, 0.92, 0.95, 0.98, 1.05, 1.12];
+                const cRate = vis > 0 ? (conv / vis) : 0;
+                for (let i = 0; i < 6; i++) {
+                    visData[i] = Math.max(0, Math.round(vis * dayMultipliers[i] * (0.96 + Math.random() * 0.08)));
+                    convData[i] = Math.max(0, Math.round(visData[i] * cRate * (0.95 + Math.random() * 0.1)));
                 }
             } else {
                 visData = generateRandomTrend(points, vis);
@@ -1429,34 +1594,38 @@
             }
             const lineLabels = isDaily ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-            const ctxL = document.getElementById("lineChart").getContext("2d");
-            if (chart2) chart2.destroy();
+            try {
+                const ctxL = document.getElementById("lineChart").getContext("2d");
+                if (chart2) chart2.destroy();
 
-            const gradC = ctxL.createLinearGradient(0, 0, 0, 200);
-            gradC.addColorStop(0, "rgba(6, 182, 212, 0.2)"); gradC.addColorStop(1, "rgba(6, 182, 212, 0)");
+                const gradC = ctxL.createLinearGradient(0, 0, 0, 200);
+                gradC.addColorStop(0, "rgba(6, 182, 212, 0.2)"); gradC.addColorStop(1, "rgba(6, 182, 212, 0)");
 
-            const gradG = ctxL.createLinearGradient(0, 0, 0, 200);
-            gradG.addColorStop(0, "rgba(16, 185, 129, 0.2)"); gradG.addColorStop(1, "rgba(16, 185, 129, 0)");
+                const gradG = ctxL.createLinearGradient(0, 0, 0, 200);
+                gradG.addColorStop(0, "rgba(16, 185, 129, 0.2)"); gradG.addColorStop(1, "rgba(16, 185, 129, 0)");
 
-            chart2 = new Chart(ctxL, {
-                type: "line",
-                data: {
-                    labels: lineLabels,
-                    datasets: [
-                        { label: "Visitors", data: visData, borderColor: "#06b6d4", backgroundColor: gradC, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: "#06b6d4" },
-                        { label: "Conversions", data: convData, borderColor: "#10b981", backgroundColor: gradG, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: "#10b981" }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.05)", drawBorder: false }, ticks: { color: "#64748b", font: { family: 'Inter' }, callback: function (value) { return value >= 1000 ? (value / 1000) + 'K' : value; } } },
-                        x: { grid: { display: false, drawBorder: false }, ticks: { color: "#64748b", font: { family: 'Inter' } } }
+                chart2 = new Chart(ctxL, {
+                    type: "line",
+                    data: {
+                        labels: lineLabels,
+                        datasets: [
+                            { label: "Visitors", data: visData, borderColor: "#06b6d4", backgroundColor: gradC, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: "#06b6d4" },
+                            { label: "Conversions", data: convData, borderColor: "#10b981", backgroundColor: gradG, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: "#10b981" }
+                        ]
                     },
-                    interaction: { intersect: false, mode: 'index' }
-                }
-            });
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.05)", drawBorder: false }, ticks: { color: "#64748b", font: { family: 'Inter' }, callback: function (value) { return value >= 1000 ? (value / 1000) + 'K' : value; } } },
+                            x: { grid: { display: false, drawBorder: false }, ticks: { color: "#64748b", font: { family: 'Inter' } } }
+                        },
+                        interaction: { intersect: false, mode: 'index' }
+                    }
+                });
+            } catch (e) {
+                console.warn("Line chart error:", e);
+            }
 
             // Parse Prediction Data for Improvements
             const suggGrid = document.getElementById("mainSuggGrid");
@@ -1583,8 +1752,6 @@
                 document.getElementById("inlineSimulationBox").style.boxShadow = "none";
             }
         }
-<<<<<<< HEAD
-=======
 
         // ==========================================
         // SALESANALYZER PDF EXPORT ENGINE
@@ -2438,7 +2605,6 @@
                 if (btnText) btnText.textContent = originalText;
             }
         }
->>>>>>> ee5f7bb (pdf)
     </script>
 </body>
 

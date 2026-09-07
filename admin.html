@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Analyzer - Unified Admin Hub</title>
+    <style>
+        :root {
+            --bg-dark: #090e17;
+            --bg-card: #111827;
+            --bg-card-alt: #0f172a;
+            --border: #1e293b;
+            --border-highlight: #334155;
+            --primary: #06b6d4;
+            --primary-glow: rgba(6, 182, 212, 0.25);
+            --recovery: #10b981;
+            --recovery-glow: rgba(16, 185, 129, 0.25);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --req: #f43f5e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2.5rem 1.5rem 4rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 960px;
+            background: rgba(17, 24, 39, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 50%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .header .subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .top-nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tabs {
+            display: inline-flex;
+            background: #0b1120;
+            padding: 0.35rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            gap: 0.25rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.6rem 1.1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            background: #1e293b;
+            color: #38bdf8;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .app-link-btn {
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            padding: 0.55rem 1.1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+        }
+
+        .app-link-btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .status-indicators {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-pill {
+            background: #0d1527;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+
+        .status-tag {
+            font-weight: 700;
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .tag-configured {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .tag-missing {
+            background: rgba(244, 63, 94, 0.15);
+            color: #f43f5e;
+            border: 1px solid rgba(244, 63, 94, 0.3);
+        }
+
+        .panel-card {
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: border-color 0.3s;
+        }
+
+        .panel-card.cyan-card {
+            border-left: 4px solid var(--primary);
+        }
+
+        .panel-card.green-card {
+            border-left: 4px solid var(--recovery);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-cyan {
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--primary);
+        }
+
+        .icon-green {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--recovery);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .card-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        .section-title {
+            font-size: 0.95rem;
+            color: #38bdf8;
+            margin: 1.5rem 0 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+        }
+
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        input {
+            padding: 0.9rem 1.1rem;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #0b1120;
+            color: #ffffff;
+            outline: none;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.25s ease;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-glow);
+        }
+
+        .green-card input:focus {
+            border-color: var(--recovery);
+            box-shadow: 0 0 0 2px var(--recovery-glow);
+        }
+
+        .btn-panel {
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            width: 100%;
+        }
+
+        .btn-cyan {
+            background: linear-gradient(90deg, #06b6d4, #0ea5e9);
+            color: white;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.25);
+        }
+
+        .btn-cyan:hover {
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-green {
+            background: linear-gradient(90deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25);
+        }
+
+        .btn-green:hover {
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .global-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn-save-all {
+            background: linear-gradient(135deg, #0ea5e9, #10b981);
+            color: white;
+            padding: 1.1rem 2rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.25s;
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-save-all:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.5);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 0.8rem 1.4rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+        }
+
+        .req {
+            color: var(--req);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1.5rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-indicators {
+                grid-template-columns: 1fr;
+            }
+
+            .global-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-save-all {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Sales Analyzer — Admin Console</h1>
+            <div class="subtitle">Unified configuration for baseline sales metrics and prediction engine.</div>
+        </div>
+
+        <div class="top-nav-bar">
+            <div class="tabs">
+                <button class="tab-btn active" id="tab-all" onclick="switchTab('all')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    All-in-One
+                </button>
+                <button class="tab-btn" id="tab-admin1" onclick="switchTab('admin1')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    Baseline Sales
+                </button>
+                <button class="tab-btn" id="tab-admin2" onclick="switchTab('admin2')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        <path d="M2 12h20"></path>
+                    </svg>
+                    Website Prediction
+                </button>
+            </div>
+
+            <a href="index.html" class="app-link-btn" title="Open Sales Analyzer Client View">
+                <span>Go to Sales Analyzer</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+        </div>
+
+        <div class="status-indicators">
+            <div class="status-pill">
+                <span>Baseline Sales Data:</span>
+                <span class="status-tag tag-missing" id="status-tag-admin1">Not Saved</span>
+            </div>
+            <div class="status-pill">
+                <span>Website Prediction Engine:</span>
+                <span class="status-tag tag-missing" id="status-tag-admin2">Not Saved</span>
+            </div>
+        </div>
+
+        <!-- SECTION 1: PRIMARY ADMIN (BASELINE SALES) -->
+        <div class="panel-card cyan-card" id="panel-admin1">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-icon icon-cyan">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Primary Admin: Core Business & Baseline Sales</div>
+                        <div class="card-subtitle">Define business presence and daily sales benchmarks.</div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="admin1Form" onsubmit="saveAdmin1(event)">
+                <div class="section-title">Core Business Identity</div>
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Google Maps URL (KEY) <span class="req">*</span></label>
+                        <input id="mapsUrl" placeholder="https://maps.google.com/..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>Business Name <span class="req">*</span></label>
+                        <input id="businessName" placeholder="e.g. Brew & Co." required>
+                    </div>
+                    <div class="form-group">
+                        <label>Location <span class="req">*</span></label>
+                        <input id="location" placeholder="e.g. New York, NY" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Category <span class="req">*</span></label>
+                        <input id="category" placeholder="e.g. Home Services" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Maps Rating (e.g. 4.8) <span class="req">*</span></label>
+                        <input id="rating" type="number" step="0.1" min="1" max="5" placeholder="4.3" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Number of Reviews <span class="req">*</span></label>
+                        <input id="reviews" type="number" min="0" placeholder="23" required>
+                    </div>
+                </div>
+
+                <div class="section-title">Current Sales Metrics (Daily Baseline)</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Total Visitors (Maps) <span class="req">*</span></label>
+                        <input id="totalVisitors" type="number" min="0" placeholder="6264" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Converted Sales <span class="req">*</span></label>
+                        <input id="convertedSales" type="number" min="0" placeholder="1963" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Lost Sales (Auto-calculated)</label>
+                        <input id="lostSales" type="number" min="0" placeholder="4301" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Average Value Per Sale (₹) <span class="req">*</span></label>
+                        <input id="avgRevenue" type="number" min="0" step="any" placeholder="85" required>
+                    </div>
+                    <div class="form-group full">
+                        <label>Estimated Revenue Lost (₹) (Auto-calculated)</label>
+                        <input id="revenueLost" type="number" min="0" placeholder="365600" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-panel btn-cyan">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    Save Baseline Business Data
+                </button>
+            </form>
+        </div>
+
+        <!-- SECTION 2: SECONDARY ADMIN (WEBSITE PREDICTION) -->
+        <div class="panel-card green-card" id="panel-admin2">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-icon icon-green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Secondary Admin: Website Prediction & Recovery</div>
+                        <div class="card-subtitle">Setup simulation parameters for high-converting website recovery.</div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="admin2Form" onsubmit="saveAdmin2(event)">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Website URL (KEY) <span class="req">*</span></label>
+                        <input id="websiteUrl" placeholder="https://yourbusiness.com" required>
+                    </div>
+                    <div class="form-group full">
+                        <label>Target Conversion Rate (%) <span class="req">*</span></label>
+                        <input id="targetConvRate" type="number" step="0.1" min="0" max="100" placeholder="15.5" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-panel btn-green">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    Save Prediction Data
+                </button>
+            </form>
+        </div>
+
+        <!-- GLOBAL ACTIONS -->
+        <div class="global-actions">
+            <button type="button" class="btn-save-all" onclick="saveAll(event)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Save All Settings (Both Panels)
+            </button>
+
+            <button type="button" class="btn-danger" onclick="clearAllData()">
+                Clear Saved Data
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tab) {
+            const panel1 = document.getElementById("panel-admin1");
+            const panel2 = document.getElementById("panel-admin2");
+            const btnAll = document.getElementById("tab-all");
+            const btn1 = document.getElementById("tab-admin1");
+            const btn2 = document.getElementById("tab-admin2");
+
+            btnAll.classList.remove("active");
+            btn1.classList.remove("active");
+            btn2.classList.remove("active");
+
+            if (tab === "admin1") {
+                panel1.style.display = "block";
+                panel2.style.display = "none";
+                btn1.classList.add("active");
+            } else if (tab === "admin2") {
+                panel1.style.display = "none";
+                panel2.style.display = "block";
+                btn2.classList.add("active");
+            } else {
+                panel1.style.display = "block";
+                panel2.style.display = "block";
+                btnAll.classList.add("active");
+            }
+        }
+
+        // Live calculation logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const visitorsInput = document.getElementById("totalVisitors");
+            const convertedInput = document.getElementById("convertedSales");
+            const lostInput = document.getElementById("lostSales");
+            const avgRevInput = document.getElementById("avgRevenue");
+            const revLostInput = document.getElementById("revenueLost");
+
+            function calcData() {
+                const vis = parseInt(visitorsInput.value) || 0;
+                const conv = parseInt(convertedInput.value) || 0;
+                const avgRev = parseFloat(avgRevInput.value) || 0;
+
+                let lost = 0;
+                if (visitorsInput.value !== "" || convertedInput.value !== "") {
+                    lost = Math.max(0, vis - conv);
+                    lostInput.value = lost;
+                } else {
+                    lost = parseInt(lostInput.value) || 0;
+                }
+
+                if (lostInput.value !== "" || avgRevInput.value !== "") {
+                    revLostInput.value = Math.round(lost * avgRev);
+                }
+            }
+
+            visitorsInput.addEventListener("input", calcData);
+            convertedInput.addEventListener("input", calcData);
+            avgRevInput.addEventListener("input", calcData);
+            lostInput.addEventListener("input", calcData);
+
+            loadSavedData();
+        });
+
+        // Pre-fill saved values
+        function loadSavedData() {
+            try {
+                // Admin 1 prefill
+                let saved1 = null;
+                const latest1 = localStorage.getItem("admin1_latest");
+                if (latest1) {
+                    saved1 = JSON.parse(latest1);
+                } else {
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k && k.startsWith("admin1_") && k !== "admin1_latest") {
+                            saved1 = JSON.parse(localStorage.getItem(k));
+                            break;
+                        }
+                    }
+                }
+
+                const tag1 = document.getElementById("status-tag-admin1");
+                if (saved1) {
+                    if (saved1.mapsUrl) document.getElementById("mapsUrl").value = saved1.mapsUrl;
+                    if (saved1.name) document.getElementById("businessName").value = saved1.name;
+                    if (saved1.location) document.getElementById("location").value = saved1.location;
+                    if (saved1.category) document.getElementById("category").value = saved1.category;
+                    if (saved1.rating) document.getElementById("rating").value = saved1.rating;
+                    if (saved1.reviews) document.getElementById("reviews").value = saved1.reviews;
+                    if (saved1.visitors) document.getElementById("totalVisitors").value = saved1.visitors;
+                    if (saved1.converted) document.getElementById("convertedSales").value = saved1.converted;
+                    if (saved1.lost) document.getElementById("lostSales").value = saved1.lost;
+                    if (saved1.revenueLost) document.getElementById("revenueLost").value = saved1.revenueLost;
+                    if (saved1.avgRevenue) document.getElementById("avgRevenue").value = saved1.avgRevenue;
+
+                    tag1.textContent = "Saved (" + (saved1.name || "Configured") + ")";
+                    tag1.className = "status-tag tag-configured";
+                } else {
+                    tag1.textContent = "Not Saved";
+                    tag1.className = "status-tag tag-missing";
+                }
+
+                // Admin 2 prefill
+                let saved2 = null;
+                const latest2 = localStorage.getItem("admin2_latest");
+                if (latest2) {
+                    saved2 = JSON.parse(latest2);
+                } else {
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k && k.startsWith("admin2_") && k !== "admin2_latest") {
+                            saved2 = JSON.parse(localStorage.getItem(k));
+                            break;
+                        }
+                    }
+                }
+
+                const tag2 = document.getElementById("status-tag-admin2");
+                if (saved2) {
+                    if (saved2.website) document.getElementById("websiteUrl").value = saved2.website;
+                    if (saved2.targetConvRate) document.getElementById("targetConvRate").value = saved2.targetConvRate;
+
+                    tag2.textContent = "Saved (" + (saved2.targetConvRate + "% Target") + ")";
+                    tag2.className = "status-tag tag-configured";
+                } else {
+                    tag2.textContent = "Not Saved";
+                    tag2.className = "status-tag tag-missing";
+                }
+
+            } catch (e) {
+                console.warn("Error loading stored data:", e);
+            }
+        }
+
+        function saveAdmin1(e) {
+            if (e && e.preventDefault) e.preventDefault();
+
+            const rawUrl = document.getElementById("mapsUrl").value.trim();
+            if (!rawUrl) {
+                alert("Google Maps URL is required as a key.");
+                return false;
+            }
+
+            const urlWithoutSlash = rawUrl.replace(/\/+$/, "");
+            const storageKey = "admin1_" + rawUrl;
+
+            const data = {
+                name: document.getElementById("businessName").value.trim(),
+                mapsUrl: rawUrl,
+                location: document.getElementById("location").value.trim(),
+                category: document.getElementById("category").value.trim(),
+                rating: document.getElementById("rating").value,
+                reviews: document.getElementById("reviews").value,
+                visitors: document.getElementById("totalVisitors").value,
+                converted: document.getElementById("convertedSales").value,
+                lost: document.getElementById("lostSales").value,
+                revenueLost: document.getElementById("revenueLost").value,
+                avgRevenue: document.getElementById("avgRevenue").value,
+                timestamp: Date.now()
+            };
+
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(data));
+                if (urlWithoutSlash !== rawUrl) {
+                    localStorage.setItem("admin1_" + urlWithoutSlash, JSON.stringify(data));
+                }
+                localStorage.setItem("admin1_latest", JSON.stringify(data));
+
+                const tag1 = document.getElementById("status-tag-admin1");
+                tag1.textContent = "Saved (" + (data.name || "Configured") + ")";
+                tag1.className = "status-tag tag-configured";
+
+                showAlert("Baseline Business Data saved successfully!");
+                return true;
+            } catch (err) {
+                console.error("Storage Error:", err);
+                alert("Data storage failed! Check if your browser restricts 'localStorage' natively.");
+                return false;
+            }
+        }
+
+        function saveAdmin2(e) {
+            if (e && e.preventDefault) e.preventDefault();
+
+            const webKey = document.getElementById("websiteUrl").value.trim();
+            if (!webKey) {
+                alert("Website URL is required as a key.");
+                return false;
+            }
+
+            const webWithoutSlash = webKey.replace(/\/+$/, "");
+            const storageKey = "admin2_" + webKey;
+
+            const pData = {
+                website: webKey,
+                targetConvRate: document.getElementById("targetConvRate").value,
+                timestamp: Date.now()
+            };
+
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(pData));
+                if (webWithoutSlash !== webKey) {
+                    localStorage.setItem("admin2_" + webWithoutSlash, JSON.stringify(pData));
+                }
+                localStorage.setItem("admin2_latest", JSON.stringify(pData));
+
+                const tag2 = document.getElementById("status-tag-admin2");
+                tag2.textContent = "Saved (" + (pData.targetConvRate + "% Target") + ")";
+                tag2.className = "status-tag tag-configured";
+
+                showAlert("Website Prediction Data saved successfully!");
+                return true;
+            } catch (err) {
+                console.error("Storage Error:", err);
+                alert("Data storage failed! Ensure you are not in strict private mode.");
+                return false;
+            }
+        }
+
+        function saveAll(e) {
+            e.preventDefault();
+
+            const form1 = document.getElementById("admin1Form");
+            const form2 = document.getElementById("admin2Form");
+
+            if (!form1.checkValidity()) {
+                switchTab("admin1");
+                form1.reportValidity();
+                return;
+            }
+
+            if (!form2.checkValidity()) {
+                switchTab("admin2");
+                form2.reportValidity();
+                return;
+            }
+
+            const ok1 = saveAdmin1();
+            const ok2 = saveAdmin2();
+
+            if (ok1 && ok2) {
+                showAlert("All Settings (Baseline & Prediction) saved successfully!");
+            }
+        }
+
+        function clearAllData() {
+            if (!confirm("Are you sure you want to clear all saved baseline and prediction data from this browser?")) {
+                return;
+            }
+
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && (k.startsWith("admin1_") || k.startsWith("admin2_"))) {
+                    keysToRemove.push(k);
+                }
+            }
+
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+
+            document.getElementById("admin1Form").reset();
+            document.getElementById("admin2Form").reset();
+
+            const tag1 = document.getElementById("status-tag-admin1");
+            tag1.textContent = "Not Saved";
+            tag1.className = "status-tag tag-missing";
+
+            const tag2 = document.getElementById("status-tag-admin2");
+            tag2.textContent = "Not Saved";
+            tag2.className = "status-tag tag-missing";
+
+            showAlert("All Admin Data cleared!");
+        }
+
+        function showAlert(msg) {
+            const existing = document.querySelector(".admin-toast");
+            if (existing) existing.remove();
+
+            const div = document.createElement('div');
+            div.className = "admin-toast";
+            div.textContent = msg;
+            div.style.position = 'fixed';
+            div.style.top = '24px';
+            div.style.right = '24px';
+            div.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+            div.style.color = '#fff';
+            div.style.padding = '1rem 1.75rem';
+            div.style.borderRadius = '10px';
+            div.style.boxShadow = '0 15px 35px rgba(16, 185, 129, 0.4)';
+            div.style.fontWeight = '600';
+            div.style.zIndex = '99999';
+            div.style.opacity = '0';
+            div.style.transform = 'translateY(-20px)';
+            div.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+            document.body.appendChild(div);
+
+            setTimeout(() => { div.style.opacity = '1'; div.style.transform = 'translateY(0)'; }, 20);
+            setTimeout(() => {
+                div.style.opacity = '0'; div.style.transform = 'translateY(-20px)';
+                setTimeout(() => div.remove(), 350);
+            }, 3200);
+        }
+    </script>
+</body>
+
+</html>
